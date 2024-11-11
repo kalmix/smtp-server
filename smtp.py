@@ -19,7 +19,8 @@ init()
 
 # Create themed prompt
 prompt = inquirer.prompt
-themed_prompt = lambda questions: prompt(questions, theme=GreenPassion())
+def themed_prompt(questions): return prompt(questions, theme=GreenPassion())
+
 
 def print_banner():
     """Display a stylish banner"""
@@ -31,17 +32,21 @@ def print_banner():
     print(Fore.GREEN + " Server Configuration Wizard" + Style.RESET_ALL)
     print(Fore.YELLOW + "=" * 50 + Style.RESET_ALL + "\n")
 
+
 def generate_api_key(length=32):
     """Generate a secure API key"""
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
+
 def validate_email(_, email):
     """Validate email format"""
     import re
     if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        raise inquirer.errors.ValidationError('', reason='Please enter a valid email address')
+        raise inquirer.errors.ValidationError(
+            '', reason='Please enter a valid email address')
     return True
+
 
 def test_gmail_credentials(username, password):
     """Test Gmail credentials"""
@@ -54,9 +59,11 @@ def test_gmail_credentials(username, password):
     except:
         return False
 
+
 def generate_server_file():
     """Generate the Flask server file"""
-    server_code = '''from flask import Flask, request, jsonify
+    server_code = '''
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import smtplib
 from email.mime.text import MIMEText
@@ -155,7 +162,7 @@ if __name__ == '__main__':
         port=PORT
     )
 '''
-    
+
     try:
         with open('app.py', 'w') as f:
             f.write(server_code)
@@ -164,26 +171,28 @@ if __name__ == '__main__':
         print(f"Error generating server file: {e}")
         return False
 
+
 def setup_config():
     """Interactive configuration setup"""
     print_banner()
-    
+
     # Load existing environment variables
     load_dotenv()
-    
+
     # Get existing or generate new API key
     existing_api_key = os.getenv('API_KEY')
     if existing_api_key:
         print(Fore.YELLOW + "Found existing API key." + Style.RESET_ALL)
         api_key_choice = themed_prompt([
             inquirer.List('api_key_action',
-                         message="What would you like to do with the API key?",
-                         choices=[
-                             ('Keep existing API key', 'keep'),
-                             ('Generate new API key', 'new')
-                         ])
+                          message="What would you like to do with the API key?",
+                          choices=[
+                              ('Keep existing API key', 'keep'),
+                              ('Generate new API key', 'new')
+                          ])
         ])
-        api_key = existing_api_key if api_key_choice['api_key_action'] == 'keep' else generate_api_key()
+        api_key = existing_api_key if api_key_choice['api_key_action'] == 'keep' else generate_api_key(
+        )
     else:
         api_key = generate_api_key()
 
@@ -199,69 +208,73 @@ def setup_config():
     # Environment setup questions
     questions = [
         inquirer.List('environment',
-                     message="Select your environment",
-                     choices=[
-                         ('Development (localhost)', 'development'),
-                         ('Production (public server)', 'production')
-                     ]),
+                      message="Select your environment",
+                      choices=[
+                          ('Development (localhost)', 'development'),
+                          ('Production (public server)', 'production')
+                      ]),
         inquirer.List('port_choice',
-                     message="Select server port",
-                     choices=common_ports),
+                      message="Select server port",
+                      choices=common_ports),
         inquirer.Text('custom_port',
-                     message="Enter custom port number (1024-65535)",
-                     validate=lambda _, x: x.isdigit() and 1024 <= int(x) <= 65535,
-                     ignore=lambda x: x['port_choice'] != 'Custom port'),
+                      message="Enter custom port number (1024-65535)",
+                      validate=lambda _, x: x.isdigit() and 1024 <= int(x) <= 65535,
+                      ignore=lambda x: x['port_choice'] != 'Custom port'),
         inquirer.List('email_service',
-                     message="Select email service",
-                     choices=[
-                         ('Gmail (recommended)', 'gmail'),
-                         ('Custom SMTP (advanced)', 'custom')
-                     ]),
+                      message="Select email service",
+                      choices=[
+                          ('Gmail (recommended)', 'gmail'),
+                          ('Custom SMTP (advanced)', 'custom')
+                      ]),
         inquirer.Text('gmail_username',
-                     message="Enter your Gmail address",
-                     validate=validate_email,
-                     ignore=lambda x: x['email_service'] != 'gmail',
-                     default=os.getenv('GMAIL_USERNAME', '')),
+                      message="Enter your Gmail address",
+                      validate=validate_email,
+                      ignore=lambda x: x['email_service'] != 'gmail',
+                      default=os.getenv('GMAIL_USERNAME', '')),
         inquirer.Password('gmail_password',
-                         message="Enter your Gmail App Password (16-character)",
-                         ignore=lambda x: x['email_service'] != 'gmail'),
+                          message="Enter your Gmail App Password (16-character)",
+                          ignore=lambda x: x['email_service'] != 'gmail'),
         inquirer.Text('recipient_email',
-                     message="Enter the email where you want to receive form submissions",
-                     validate=validate_email,
-                     default=os.getenv('RECIPIENT_EMAIL', ''))
+                      message="Enter the email where you want to receive form submissions",
+                      validate=validate_email,
+                      default=os.getenv('RECIPIENT_EMAIL', ''))
     ]
 
     answers = themed_prompt(questions)
-    
+
     # Handle port selection
     if answers['port_choice'] == 'Custom port':
         port = answers['custom_port']
     else:
         port = answers['port_choice'].split()[0]  # Get just the number
-    
+
     # Test Gmail credentials if using Gmail
     if answers['email_service'] == 'gmail':
         with yaspin(Spinners.dots, text="Testing Gmail credentials...") as spinner:
             if test_gmail_credentials(answers['gmail_username'], answers['gmail_password']):
                 spinner.ok("✓")
-                print(Fore.GREEN + "Gmail credentials verified successfully!" + Style.RESET_ALL)
+                print(
+                    Fore.GREEN + "Gmail credentials verified successfully!" + Style.RESET_ALL)
             else:
                 spinner.fail("×")
-                print(Fore.RED + "Failed to verify Gmail credentials." + Style.RESET_ALL)
-                
+                print(Fore.RED + "Failed to verify Gmail credentials." +
+                      Style.RESET_ALL)
+
                 setup_choice = themed_prompt([
                     inquirer.List('action',
-                                message="What would you like to do?",
-                                choices=[
-                                    ('Show Gmail setup instructions', 'instructions'),
-                                    ('Continue anyway', 'continue'),
-                                    ('Start over', 'restart'),
-                                    ('Exit', 'exit')
-                                ])
+                                  message="What would you like to do?",
+                                  choices=[
+                                      ('Show Gmail setup instructions',
+                                       'instructions'),
+                                      ('Continue anyway', 'continue'),
+                                      ('Start over', 'restart'),
+                                      ('Exit', 'exit')
+                                  ])
                 ])
-                
+
                 if setup_choice['action'] == 'instructions':
-                    print(Fore.YELLOW + "\nTo get an App Password:" + Style.RESET_ALL)
+                    print(Fore.YELLOW + "\nTo get an App Password:" +
+                          Style.RESET_ALL)
                     print("1. Go to your Google Account settings")
                     print("2. Enable 2-Step Verification if not already enabled")
                     print("3. Go to Security → App passwords")
@@ -279,7 +292,8 @@ def setup_config():
             env_file = '.env'
             if answers['email_service'] == 'gmail':
                 set_key(env_file, 'GMAIL_USERNAME', answers['gmail_username'])
-                set_key(env_file, 'GMAIL_APP_PASSWORD', answers['gmail_password'])
+                set_key(env_file, 'GMAIL_APP_PASSWORD',
+                        answers['gmail_password'])
             set_key(env_file, 'RECIPIENT_EMAIL', answers['recipient_email'])
             set_key(env_file, 'API_KEY', api_key)
             set_key(env_file, 'PORT', port)
@@ -287,13 +301,14 @@ def setup_config():
             spinner.ok("✓")
         except Exception as e:
             spinner.fail("×")
-            print(Fore.RED + f"Error saving configuration: {str(e)}" + Style.RESET_ALL)
+            print(
+                Fore.RED + f"Error saving configuration: {str(e)}" + Style.RESET_ALL)
             return False
 
     print(Fore.GREEN + "\n✨ Configuration saved successfully! ✨" + Style.RESET_ALL)
     print("\nHere's your API key (keep it secure):")
     print(Fore.YELLOW + f"\n{api_key}\n" + Style.RESET_ALL)
-    
+
     print("To test your endpoint, use this curl command:")
     print(Fore.CYAN + f"""
 curl -X POST \\
@@ -303,8 +318,9 @@ curl -X POST \\
   -F "message=Test message" \\
   http://localhost:{port}/submit-form
     """ + Style.RESET_ALL)
-    
+
     return True
+
 
 def main():
     try:
@@ -313,37 +329,42 @@ def main():
             with yaspin(Spinners.dots, text="Generating server file...") as spinner:
                 if generate_server_file():
                     spinner.ok("✓")
-                    print(Fore.GREEN + "Server file generated successfully!" + Style.RESET_ALL)
+                    print(
+                        Fore.GREEN + "Server file generated successfully!" + Style.RESET_ALL)
                 else:
                     spinner.fail("×")
-                    print(Fore.RED + "Failed to generate server file." + Style.RESET_ALL)
+                    print(Fore.RED + "Failed to generate server file." +
+                          Style.RESET_ALL)
                     return
 
             # Show next steps
             start_server = themed_prompt([
                 inquirer.List('action',
-                            message="What would you like to do next?",
-                            choices=[
-                                ('Start the server now', 'start'),
-                                ('View the API documentation', 'docs'),
-                                ('Exit', 'exit')
-                            ])
+                              message="What would you like to do next?",
+                              choices=[
+                                  ('Start the server now', 'start'),
+                                  ('View the API documentation', 'docs'),
+                                  ('Exit', 'exit')
+                              ])
             ])
-            
+
             if start_server['action'] == 'start':
                 # Check if Flask is installed
                 try:
                     import flask
                 except ImportError:
-                    print(Fore.YELLOW + "\nFlask is not installed. Installing required packages..." + Style.RESET_ALL)
-                    subprocess.run([sys.executable, "-m", "pip", "install", "flask", "python-dotenv"])
-                
+                    print(
+                        Fore.YELLOW + "\nFlask is not installed. Installing required packages..." + Style.RESET_ALL)
+                    subprocess.run([sys.executable, "-m", "pip",
+                                   "install", "flask", "python-dotenv"])
+
                 print(Fore.GREEN + "\nStarting server..." + Style.RESET_ALL)
                 try:
                     subprocess.run([sys.executable, "app.py"])
                 except Exception as e:
-                    print(Fore.RED + f"\nError starting server: {e}" + Style.RESET_ALL)
-            
+                    print(
+                        Fore.RED + f"\nError starting server: {e}" + Style.RESET_ALL)
+
             elif start_server['action'] == 'docs':
                 print(Fore.YELLOW + "\nAPI Documentation:" + Style.RESET_ALL)
                 print("\nEndpoints:")
@@ -351,11 +372,13 @@ def main():
                 print("    - Required header: X-API-Key")
                 print("    - Form fields: name, email, message")
                 print("\nExample curl command:")
-                print(f"curl -X POST -H \"X-API-Key: {os.getenv('API_KEY')}\" -F \"name=John Doe\" -F \"email=test@example.com\" -F \"message=Test message\" http://localhost:{os.getenv('PORT', '5000')}/submit-form")
-    
+                print(f"curl -X POST -H \"X-API-Key: {os.getenv(
+                    'API_KEY')}\" -F \"name=John Doe\" -F \"email=test@example.com\" -F \"message=Test message\" http://localhost:{os.getenv('PORT', '5000')}/submit-form")
+
     except KeyboardInterrupt:
         print(Fore.YELLOW + "\n\nSetup cancelled. Goodbye! 👋" + Style.RESET_ALL)
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
