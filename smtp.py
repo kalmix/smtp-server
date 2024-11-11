@@ -57,17 +57,32 @@ def test_gmail_credentials(username, password):
 def generate_server_file():
     """Generate the Flask server file"""
     server_code = '''from flask import Flask, request, jsonify
+from flask_cors import CORS
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from functools import wraps
 import os
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+# Configure CORS
+cors = CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://elenapallets.com.do",
+            # Localhost regex pattern to match any port
+            r"http://localhost:[0-9]+"
+        ],
+        "methods": ["POST", "GET", "OPTIONS"],
+        "allow_headers": ["Content-Type", "X-API-Key"]
+    }
+})
 
 # Email configuration
 SMTP_SERVER = "smtp.gmail.com"
@@ -112,9 +127,9 @@ def submit_form():
         if not form_data:
             return jsonify({"error": "No form data received"}), 400
         
-        email_body = "New Form Submission:\\n\\n"
+        email_body = "New Form Submission:\n\n"
         for key, value in form_data.items():
-            email_body += f"{key}: {value}\\n"
+            email_body += f"{key}: {value}\n"
 
         success, message = send_email("New Form Submission", email_body)
         
