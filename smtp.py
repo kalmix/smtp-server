@@ -107,23 +107,14 @@ def send_email(subject, body):
 @require_api_key
 def submit_form():
     try:
-        # Handle both JSON and form data
-        if request.is_json:
-            form_data = request.get_json()
-        else:
-            form_data = request.form.to_dict()
+        form_data = request.form.to_dict()
         
         if not form_data:
-            return jsonify({"error": "No data received"}), 400
+            return jsonify({"error": "No form data received"}), 400
         
-        # Properly format the email body with the submission data
-        email_body = "New Form Submission:\n\n"
+        email_body = "New Form Submission:\\n\\n"
         for key, value in form_data.items():
-            # Handle nested JSON structures
-            if isinstance(value, (dict, list)):
-                email_body += f"{key}:\n{str(value)}\n"
-            else:
-                email_body += f"{key}: {value}\n"
+            email_body += f"{key}: {value}\\n"
 
         success, message = send_email("New Form Submission", email_body)
         
