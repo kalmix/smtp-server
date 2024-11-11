@@ -116,6 +116,7 @@ def submit_form():
         if not form_data:
             return jsonify({"error": "No data received"}), 400
         
+        # Properly format the email body with the submission data
         email_body = "New Form Submission:\n\n"
         for key, value in form_data.items():
             # Handle nested JSON structures
